@@ -19,13 +19,10 @@ function buildArgs (source, givenOutput, loop, initialVolume, showOsd, showBlank
 	let output = '';
 
 	if (givenOutput) {
-
 		if (ALLOWED_OUTPUTS.indexOf(givenOutput) === -1) {
 			throw new Error(`Output ${givenOutput} not allowed.`);
 		}
-
 		output = givenOutput;
-
 	} else {
 		output = 'local';
 	}
@@ -51,9 +48,7 @@ function buildArgs (source, givenOutput, loop, initialVolume, showOsd, showBlank
 	if (Number.isInteger(initialVolume)) {
 		args.push('--vol', initialVolume);
 	}
-
 	return args;
-
 }
 
 
@@ -66,33 +61,32 @@ function Omx (source, output, loop, initialVolume, showOsd) {
 	let omxplayer = new EventEmitter();
 	let player = null;
 	let open = false;
+	let playing = false;
 
 	// ----- Local Functions ----- //
 
 	// Marks player as closed.
 	function updateStatus () {
-
 		open = false;
+		playing = false; 
 		omxplayer.emit('close');
-
 	}
 
 	// Emits an error event, with a given message.
 	function emitError (message) {
-
 		open = false;
+		playing = false; 
 		omxplayer.emit('error', message);
 
 	}
 
 	// Spawns the omxplayer process.
 	function spawnPlayer (src, out, loop, initialVolume, showOsd) {
-
 		let args = buildArgs(src, out, loop, initialVolume, showOsd);
 		console.log('args for omxplayer:', args);
 		let omxProcess = spawn('omxplayer', args);
 		open = true;
-
+		playing = true; 
 		omxProcess.stdin.setEncoding('utf-8');
 		omxProcess.on('close', updateStatus);
 
@@ -101,18 +95,16 @@ function Omx (source, output, loop, initialVolume, showOsd) {
 		});
 
 		return omxProcess;
-
 	}
 
 	// Simulates keypress to provide control.
 	function writeStdin (value) {
-
 		if (open) {
 			player.stdin.write(value);
 		} else {
+			playing = false; 
 			throw new Error('Player is closed.');
 		}
-
 	}
 
 	// ----- Setup ----- //
@@ -125,26 +117,23 @@ function Omx (source, output, loop, initialVolume, showOsd) {
 
 	// Restarts omxplayer with a new source.
 	omxplayer.newSource = (src, out, loop, initialVolume, showOsd) => {
-
 		if (open) {
-
 			player.on('close', () => { player = spawnPlayer(src, out, loop, initialVolume, showOsd); });
 			player.removeListener('close', updateStatus);
 			writeStdin('q');
-
 		} else {
-
 			player = spawnPlayer(src, out, loop, initialVolume, showOsd);
-
 		}
-
 	};
 
-	omxplayer.setPlay = () => { spawn('./dbuscontrol.sh', ['play']); };
-	omxplayer.setPause = () => { spawn('./dbuscontrol.sh', ['pause']); };
-
-	omxplayer.play = () => { writeStdin('p'); };
-	omxplayer.pause = () => { writeStdin('p'); };
+	omxplayer.play = () => { 
+		playing = !playing; 
+		writeStdin('p'); 
+	};
+	omxplayer.pause = () => { 
+		playing = !playing; 
+		writeStdin('p'); 
+	};
 	omxplayer.volUp = () => { writeStdin('+'); };
 	omxplayer.volDown = () => { writeStdin('-'); };
 	omxplayer.fastFwd = () => { writeStdin('>'); };
@@ -171,13 +160,12 @@ function Omx (source, output, loop, initialVolume, showOsd) {
 		get: () => { return open; }
 	});
 
-	// ----- Return Object ----- //
+	Object.defineProperty(omxplayer, 'playing', {
+		get: () => { return playing; }
+	});
 
 	return omxplayer;
-
 }
 
-
 // ----- Module Exports ----- //
-
 module.exports = Omx;
