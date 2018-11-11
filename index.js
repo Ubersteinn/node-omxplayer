@@ -140,6 +140,9 @@ function Omx (source, output, loop, initialVolume, showOsd) {
 
 	};
 
+	omxplayer.setPlay = () => { spawn('./dbuscontrol.sh', ['play']); };
+	omxplayer.setPause = () => { spawn('./dbuscontrol.sh', ['pause']); };
+
 	omxplayer.play = () => { writeStdin('p'); };
 	omxplayer.pause = () => { writeStdin('p'); };
 	omxplayer.volUp = () => { writeStdin('+'); };
